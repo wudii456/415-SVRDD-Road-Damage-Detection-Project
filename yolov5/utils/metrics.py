@@ -18,7 +18,7 @@ trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 
 def fitness(x):
     """Calculates fitness of a model using weighted sum of metrics P, R, mAP50, mAP50-95."""
-    w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP50, mAP50-95]
+    w = [0.0, 0.0, 0.0, 1.0]  # weights for [P, R, mAP50, mAP50-95]
     return (x[:, :4] * w).sum(1)
 
 
