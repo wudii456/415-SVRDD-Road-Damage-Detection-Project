@@ -1,0 +1,4 @@
+weight_decay,seed,epochs,batch_size,image_size,training_gpu,validation_gpu,validation_images,below_baseline_classes_mean_ap50,map50,map50_95,longitudinal_crack_ap50,transverse_crack_ap50,alligator_crack_ap50,pothole_ap50,manhole_cover_ap50,longitudinal_patch_ap50,transverse_patch_ap50
+0.0005,0,80,32,640,A100-SXM4-40GB,A100-SXM4-40GB,1000,0.66975,0.716,0.408,0.693,0.639,0.764,0.659,0.822,0.75,0.688
+0.001,0,80,32,640,A100-SXM4-40GB,A100-SXM4-80GB,1000,0.661,0.71,0.413,0.688,0.636,0.756,0.627,0.816,0.752,0.693
+0.005,0,80,32,640,A100-SXM4-80GB,A100-SXM4-80GB,1000,0.686,0.724,0.412,0.682,0.661,0.748,0.722,0.823,0.753,0.679
