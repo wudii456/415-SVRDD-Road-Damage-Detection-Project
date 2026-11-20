@@ -108,9 +108,12 @@ class ComputeLoss:
         """Initializes ComputeLoss with model and autobalance option, autobalances losses if True."""
         device = next(model.parameters()).device  # get model device
         h = model.hyp  # hyperparameters
+        self.cb_w = getattr(model, "cb_weights", None)  # per-class weights for cls + box loss (class-balanced), or None
 
         # Define criteria
-        BCEcls = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([h["cls_pw"]], device=device))
+        BCEcls = nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor([h["cls_pw"]], device=device), reduction="mean" if self.cb_w is None else "none"
+        )
         BCEobj = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([h["obj_pw"]], device=device))
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
@@ -145,13 +148,14 @@ class ComputeLoss:
 
             if n := b.shape[0]:
                 pxy, pwh, _, pcls = pi[b, a, gj, gi].split((2, 2, 1, self.nc), 1)  # target-subset of predictions
+                w = None if self.cb_w is None else self.cb_w[tcls[i]]  # class weight of each matched prediction
 
                 # Regression
                 pxy = pxy.sigmoid() * 2 - 0.5
                 pwh = (pwh.sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
                 iou = bbox_iou(pbox, tbox[i], CIoU=True).squeeze()  # iou(prediction, target)
-                lbox += (1.0 - iou).mean()  # iou loss
+                lbox += (1.0 - iou).mean() if w is None else ((1.0 - iou) * w).mean()  # iou loss
 
                 # Objectness
                 iou = iou.detach().clamp(0).type(tobj.dtype)
@@ -166,7 +170,7 @@ class ComputeLoss:
                 if self.nc > 1:  # cls loss (only if multiple classes)
                     t = torch.full_like(pcls, self.cn, device=self.device)  # targets
                     t[range(n), tcls[i]] = self.cp
-                    lcls += self.BCEcls(pcls, t)  # BCE
+                    lcls += self.BCEcls(pcls, t) if w is None else (self.BCEcls(pcls, t).mean(1) * w).mean()  # BCE
 
             obji = self.BCEobj(pi[..., 4], tobj)
             lobj += obji * self.balance[i]  # obj loss

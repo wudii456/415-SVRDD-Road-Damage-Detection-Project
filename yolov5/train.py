@@ -284,7 +284,7 @@ def train(hyp, opt, device, callbacks):
         rect=opt.rect,
         rank=LOCAL_RANK,
         workers=workers,
-        image_weights=opt.image_weights,
+        image_weights=opt.image_weights or opt.rfs_thr > 0,
         quad=opt.quad,
         prefix=colorstr("train: "),
         shuffle=True,
@@ -293,6 +293,12 @@ def train(hyp, opt, device, callbacks):
     labels = np.concatenate(dataset.labels, 0)
     mlc = int(labels[:, 0].max())  # max label class
     assert mlc < nc, f"Label class {mlc} exceeds nc={nc} in {data}. Possible class labels are 0-{nc - 1}"
+    if opt.rfs_thr > 0:  # repeat-factor sampling (LVIS): r_c = max(1, sqrt(t / f_c)), image r = max over its classes
+        assert not opt.image_weights, "--rfs-thr and --image-weights are mutually exclusive"
+        present = np.array([np.bincount(x[:, 0].astype(int), minlength=nc) > 0 for x in dataset.labels])
+        rfs_class = np.maximum(1.0, np.sqrt(opt.rfs_thr / np.maximum(present.mean(0), 1e-12)))
+        rfs_weights = [rfs_class[p].max() if p.any() else 1.0 for p in present]
+        LOGGER.info(f"Repeat-factor sampling t={opt.rfs_thr}, class factors: {np.round(rfs_class, 2).tolist()}")
 
     # Process 0
     if RANK in {-1, 0}:
@@ -331,6 +337,12 @@ def train(hyp, opt, device, callbacks):
     model.nc = nc  # attach number of classes to model
     model.hyp = hyp  # attach hyperparameters to model
     model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc  # attach class weights
+    if opt.cb_beta > 0:  # class-balanced loss (Cui et al.): w_c ∝ (1-β)/(1-β^n_c), mean 1 over training instances
+        n_c = np.bincount(labels[:, 0].astype(int), minlength=nc)
+        w = (1 - opt.cb_beta) / (1 - opt.cb_beta ** np.maximum(n_c, 1))
+        w *= n_c.sum() / (w * n_c).sum()
+        model.cb_weights = torch.tensor(w, dtype=torch.float32, device=device)
+        LOGGER.info(f"Class-balanced loss beta={opt.cb_beta}, class weights: {np.round(w, 3).tolist()}")
     model.names = names
 
     # Start training
@@ -361,6 +373,8 @@ def train(hyp, opt, device, callbacks):
             cw = model.class_weights.cpu().numpy() * (1 - maps) ** 2 / nc  # class weights
             iw = labels_to_image_weights(dataset.labels, nc=nc, class_weights=cw)  # image weights
             dataset.indices = random.choices(range(dataset.n), weights=iw, k=dataset.n)  # rand weighted idx
+        elif opt.rfs_thr > 0:  # same epoch length, so all variants get the same number of optimizer steps
+            dataset.indices = random.choices(range(dataset.n), weights=rfs_weights, k=dataset.n)
 
         # Update mosaic border (optional)
         # b = int(random.uniform(0.25 * imgsz, 0.75 * imgsz + gs) // gs * gs)
@@ -573,6 +587,8 @@ def parse_opt(known=False):
     parser.add_argument("--bucket", type=str, default="", help="gsutil bucket")
     parser.add_argument("--cache", type=str, nargs="?", const="ram", help="image --cache ram/disk")
     parser.add_argument("--image-weights", action="store_true", help="use weighted image selection for training")
+    parser.add_argument("--rfs-thr", type=float, default=0.0, help="repeat-factor sampling threshold t, 0 = off")
+    parser.add_argument("--cb-beta", type=float, default=0.0, help="class-balanced loss beta, 0 = off")
     parser.add_argument("--device", default="", help="cuda device, i.e. 0 or 0,1,2,3 or cpu")
     parser.add_argument("--multi-scale", action="store_true", help="vary img-size +/- 50%%")
     parser.add_argument("--single-cls", action="store_true", help="train multi-class data as single-class")
