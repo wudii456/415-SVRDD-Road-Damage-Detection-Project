@@ -1,0 +1,6 @@
+variant,weight_decay,seed,epochs,batch_size,image_size,training_gpu,validation_gpu,validation_images,below_baseline_classes_mean_ap50,map50_95,pothole_ap50,map50,worst_class_ap50,longitudinal_crack_ap50,transverse_crack_ap50,alligator_crack_ap50,manhole_cover_ap50,longitudinal_patch_ap50,transverse_patch_ap50,below_baseline_classes_mean_ap50_delta_pp,map50_95_delta_pp,pothole_ap50_delta_pp,map50_delta_pp,worst_class_ap50_delta_pp
+default,0.005,0,80,32,640,A100-SXM4-80GB,A100-SXM4-80GB,1000,0.686,0.412,0.722,0.724,0.661,0.682,0.661,0.748,0.823,0.753,0.679,0.0,0.0,0.0,0.0,0.0
+scale_025,0.005,0,80,32,640,NVIDIA A100-SXM4-80GB,NVIDIA A100-SXM4-80GB,1000,0.664,0.403,0.65,0.702,0.634,0.69,0.634,0.716,0.806,0.735,0.682,-2.2,-0.9,-7.2,-2.2,-2.7
+hsv_s_035,0.005,0,80,32,640,NVIDIA A100-SXM4-80GB,NVIDIA A100-SXM4-80GB,1000,0.67725,0.409,0.668,0.722,0.657,0.695,0.657,0.772,0.825,0.747,0.689,-0.875,-0.3,-5.4,-0.2,-0.4
+mixup_010,0.005,0,80,32,640,NVIDIA A100-SXM4-80GB,NVIDIA A100-SXM4-80GB,1000,0.67625,0.409,0.644,0.723,0.644,0.695,0.657,0.757,0.842,0.761,0.709,-0.975,-0.3,-7.8,-0.1,-1.7
+mosaic_son10,0.005,0,80,32,640,NVIDIA A100-SXM4-80GB,NVIDIA A100-SXM4-80GB,1000,0.671,0.406,0.651,0.716,0.651,0.685,0.652,0.764,0.819,0.742,0.696,-1.5,-0.6,-7.1,-0.8,-1.0
